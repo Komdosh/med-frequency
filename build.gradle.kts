@@ -26,6 +26,9 @@ dependencies {
     implementation(files("libs/MetaMapApi.jar"))
     implementation(files("libs/prologbeans.jar"))
 
+    implementation("org.apache.commons:commons-csv:1.8")
+    implementation("io.github.microutils:kotlin-logging:2.0.3")
+
     implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     runtimeOnly("com.h2database:h2")
