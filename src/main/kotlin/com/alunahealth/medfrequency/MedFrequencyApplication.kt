@@ -29,13 +29,11 @@ class MedFrequencyApplication(
             .stream()
             .map { metaMapFrequencyService.buildFrequencies(it) }
             .forEach {
-
                 val p = noteEventsProcessedRepository.find()
-                log.info("finished ${p.count}/")
+                log.info("finished ${p.count} / 2 083 180 ${p.count/2_083_180}%")
                 p.count++
                 noteEventsProcessedRepository.save(p)
             }
-
     }
 }
 
