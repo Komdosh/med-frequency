@@ -1,45 +1,41 @@
 package com.alunahealth.medfrequency
 
+import com.alunahealth.medfrequency.frequency.MetaMapFrequencyService
+import com.alunahealth.medfrequency.noteevents.NoteEventsProcessed
+import com.alunahealth.medfrequency.noteevents.NoteEventsProcessedRepository
+import com.alunahealth.medfrequency.noteevents.NoteEventsReaderService
 import mu.KotlinLogging
-import org.apache.commons.csv.CSVFormat
-import org.apache.commons.csv.CSVParser
-import org.apache.commons.csv.CSVRecord
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import java.io.File
-import java.util.stream.Stream
-import kotlin.streams.toList
 
 val log = KotlinLogging.logger {}
 
 @SpringBootApplication
-class MedFrequencyApplication : CommandLineRunner {
-
-    val NOTE_EVENTS_PATH = "C:\\Projects\\mimic\\NOTEEVENTS.csv"
+class MedFrequencyApplication(
+    private val metaMapFrequencyService: MetaMapFrequencyService,
+    private val noteEventsReaderService: NoteEventsReaderService,
+    private val noteEventsProcessedRepository: NoteEventsProcessedRepository
+) : CommandLineRunner {
 
     override fun run(vararg args: String) {
         //runExampleText()
 
-        val metaMapFrequency = MetaMapFrequency()
-        val iterator = CSVParser(
-            File(NOTE_EVENTS_PATH).bufferedReader(),
-            CSVFormat.DEFAULT.withIgnoreHeaderCase()
-        ).iterator()
+        if (noteEventsProcessedRepository.count() == 0L) {
+            noteEventsProcessedRepository.save(NoteEventsProcessed(count = 0))
+        }
 
-        var index = 0
-        Stream.generate<CSVRecord> { null }
-            .takeWhile { iterator.hasNext() }
-            .map { iterator.next() }
-            .skip(1)
-            .limit(2)
-            .map { it.get(10) }
-            .toList()
-            .parallelStream()
-            .map { metaMapFrequency.buildFrequencies(it) }
-            .forEach { log.info("finished ${++index}") }
+        noteEventsReaderService.getNoteEvents()
+            .stream()
+            .map { metaMapFrequencyService.buildFrequencies(it) }
+            .forEach {
 
-        println(metaMapFrequency.frequencies)
+                val p = noteEventsProcessedRepository.find()
+                log.info("finished ${p.count}/")
+                p.count++
+                noteEventsProcessedRepository.save(p)
+            }
+
     }
 }
 
