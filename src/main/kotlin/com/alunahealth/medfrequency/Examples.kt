@@ -6,7 +6,7 @@ import gov.nih.nlm.nls.metamap.Result
 import gov.nih.nlm.nls.metamap.Utils
 import java.text.Normalizer
 
-fun runExampleText(){
+fun runExample(){
     var input = "Systemic arterial hypertension (hereafter referred to as hypertension) " +
             "is characterized by persistently high blood pressure (BP) in the systemic arteries." +
             " BP is commonly expressed as the ratio of the systolic BP (that is, the pressure " +
@@ -24,9 +24,10 @@ fun runExampleText(){
             "therapeutic modalities for hypertension in the era of precision medicine."
     input = Normalizer.normalize(input, Normalizer.Form.NFD)
     input = input.replace("[^\\p{ASCII}]".toRegex(), "")
-    println(Utils.isPureAscii(input))
     val api: MetaMapApi = MetaMapApiImpl()
+
     println("api instanciated")
+
     val resultList = api.processCitationsFromString(input)
     resultList.forEach { result: Result ->
         try {

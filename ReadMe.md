@@ -1,12 +1,14 @@
 # MetaMap Med Term Frequency Builder
 
+Building medical term dictionary with word frequency using metamap.
+
 ## MetaMap Installation
 
 https://metamap.nlm.nih.gov/download/public_mm_linux_main_2020.tar.bz2
 
 https://metamap.nlm.nih.gov/download/public_mm_linux_javaapi_2020.tar.bz2
 
-copy all files from `javaapi/public_mm/bin` to `public_mm_linux_main_2020/public_mm/bin` 
+copy all files from `javaapi/public_mm/bin` to `public_mm_linux_main_2020/public_mm/bin`
 
 copy `javaapi/public_mm/bin/mmserver` to `public_mm_linux_main_2020/public_mm`
 
@@ -22,13 +24,21 @@ to stop all servers execute `sh ./stop.sh`
 
 ## Example Execution
 
-Simply uncomment line in `MedFrequencyApplication.kt`
+Provide spring active profile equal to `example` into application.yml
 
-```kotlin
-@SpringBootApplication
-class MedFrequencyApplication : CommandLineRunner {
-    override fun run(vararg args: String) {
-        runExampleText() //this line should be uncommented
-    }
-}
+```yaml
+spring:
+  profiles:
+    active: example
+```
+
+## MIMIC III NoteEvents Execution
+
+Delete `example` spring active profile if set.
+
+Provide path to noteevents file into application.yml
+
+```yaml
+app:
+  noteevents: file:pathToNoteEvents.csv
 ```

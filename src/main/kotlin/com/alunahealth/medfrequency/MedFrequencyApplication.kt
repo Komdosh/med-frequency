@@ -5,10 +5,13 @@ import com.alunahealth.medfrequency.noteevents.NoteEventsProcessed
 import com.alunahealth.medfrequency.noteevents.NoteEventsProcessedRepository
 import com.alunahealth.medfrequency.noteevents.NoteEventsReaderService
 import mu.KotlinLogging
-import org.springframework.boot.CommandLineRunner
+import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Profile
 
+const val NOTE_EVENTS_SIZE_2020 = 2_083_180
 val log = KotlinLogging.logger {}
 
 @SpringBootApplication
@@ -16,24 +19,33 @@ class MedFrequencyApplication(
     private val metaMapFrequencyService: MetaMapFrequencyService,
     private val noteEventsReaderService: NoteEventsReaderService,
     private val noteEventsProcessedRepository: NoteEventsProcessedRepository
-) : CommandLineRunner {
+) {
 
-    override fun run(vararg args: String) {
-        //runExampleText()
+    @Bean
+    @Profile("example")
+    fun example() = ApplicationRunner{
+        runExample()
+    }
 
-        if (noteEventsProcessedRepository.count() == 0L) {
-            noteEventsProcessedRepository.save(NoteEventsProcessed(count = 0))
-        }
+    @Bean
+    @Profile("!example")
+    fun run(): ApplicationRunner {
 
-        noteEventsReaderService.getNoteEvents()
-            .stream()
-            .map { metaMapFrequencyService.buildFrequencies(it) }
-            .forEach {
-                val p = noteEventsProcessedRepository.find()
-                log.info("finished ${p.count} / 2 083 180 ${p.count/2_083_180}%")
-                p.count++
-                noteEventsProcessedRepository.save(p)
+        return ApplicationRunner{
+            if (noteEventsProcessedRepository.count() == 0L) {
+                noteEventsProcessedRepository.save(NoteEventsProcessed(count = 0))
             }
+
+            noteEventsReaderService.getNoteEvents()
+                .stream()
+                .map { metaMapFrequencyService.buildFrequencies(it) }
+                .forEach {
+                    val p = noteEventsProcessedRepository.find()
+                    log.info("finished ${p.count} / $NOTE_EVENTS_SIZE_2020 (${p.count / NOTE_EVENTS_SIZE_2020}%)")
+                    p.count++
+                    noteEventsProcessedRepository.save(p)
+                }
+        }
     }
 }
 
