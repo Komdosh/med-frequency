@@ -22,9 +22,7 @@ copy files from this repo `./scripts` folder to `public_mm_linux_main_2020/publi
 
 `chmod +x start.sh stop.sh`
 
-export path to metamap
-
-`export METAMAP_PATH=/home/administrator/metamap/public_mm`
+replace absolute path for metamap `public_mm` folder
 
 to run all servers execute `./start.sh` (mmserver std output will start in terminal)
 

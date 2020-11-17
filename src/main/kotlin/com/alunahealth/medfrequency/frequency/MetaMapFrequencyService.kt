@@ -10,6 +10,7 @@ import gov.nih.nlm.nls.metamap.MetaMapApiImpl
 import gov.nih.nlm.nls.metamap.Result
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.task.TaskExecutor
 import org.springframework.stereotype.Service
 import java.text.Normalizer
@@ -20,29 +21,26 @@ import java.util.stream.Collectors.groupingBy
 class MetaMapFrequencyService(
     private val frequencyRepository: FrequencyRepository,
     private val noteEventsProcessedRepository: NoteEventsProcessedRepository,
-    private val taskExecutor: TaskExecutor
+    private val taskExecutor: TaskExecutor,
+    @Value("\${app.metamap.ports}") private val ports: List<Int> = listOf(8086)
 ) {
 
-    private final val api: MetaMapApi = MetaMapApiImpl()
-    private final val api2: MetaMapApi = MetaMapApiImpl()
+    private final val apis: List<MetaMapApi> = Array(ports.size) {
+        val api = MetaMapApiImpl()
+        api.setPort(ports[it])
+
+        api.options =
+            "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
+        api
+    }.toList()
+
     private val startTime = System.nanoTime()
     private var avgProcessingTime = 0L
     private var processed = 0L
 
-    init {
-        api.options =
-            "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
-
-        api2.session.port = 8076
-        /*api2.session.host = "192.168.25.4"*/
-
-        api2.options =
-            "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
-    }
-
     var tCount = 0
 
-    val semaphore = Semaphore(2)
+    val semaphore = Semaphore(ports.size)
 
     fun buildFrequencies(input: String) {
         val text =
@@ -51,16 +49,8 @@ class MetaMapFrequencyService(
         runBlocking {
             semaphore.acquire()
             CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
+                val processedCitations = processText(text)
 
-                val processedCitations = if (tCount == 0) {
-                    tCount++
-                    log.info("Start text processing ${text.length} on first node")
-                    api.processCitationsFromString(text)
-                } else {
-                    tCount = 0
-                    log.info("Start text processing ${text.length} on second node")
-                    api2.processCitationsFromString(text)
-                }
                 semaphore.release()
                 taskExecutor.execute {
                     val concepts = getConcepts(processedCitations)
@@ -73,6 +63,17 @@ class MetaMapFrequencyService(
             }
 
         }
+    }
+
+    private fun processText(text: String): MutableList<Result> {
+        val node = if (tCount >= ports.size) 0 else tCount
+        val api = apis[node]
+        tCount++
+        if (tCount >= ports.size) {
+            tCount = 0
+        }
+        log.info("Start text processing ${text.length} on $node node")
+        return api.processCitationsFromString(text)
     }
 
     private fun saveFrequencies(concepts: Map<String, List<Ev>>) {

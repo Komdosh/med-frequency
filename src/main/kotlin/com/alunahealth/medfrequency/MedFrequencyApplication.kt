@@ -39,6 +39,8 @@ class MedFrequencyApplication(
             if (noteEventsProcessedRepository.count() == 0L) {
                 noteEventsProcessedRepository.save(NoteEventsProcessed(count = 0))
             }
+
+            log.info("Total documents to process: $NOTE_EVENTS_SIZE_2020")
             noteEventsReaderService.getNoteEvents()
                 .forEach { metaMapFrequencyService.buildFrequencies(it) }
 

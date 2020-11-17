@@ -37,7 +37,7 @@ class NoteEventsReaderService(
             .map { texts.add(it) }
             .filter { texts.size >= COMBINED_TEXTS }
             .map {
-                texts.reduce { acc, s -> acc + s }
+                texts.reduce { acc, s -> acc + "\n" + s }
             }
     }
 }

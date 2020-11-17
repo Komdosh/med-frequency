@@ -1,2 +1,3 @@
-"$METAMAP_PATH"/bin/wsdserverctl stop
-"$METAMAP_PATH"/bin/skrmedpostctl stop
+#!/bin/bash -
+
+/home/ubuntu/public_mm/bin/skrmedpostctl stop
