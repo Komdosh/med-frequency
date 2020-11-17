@@ -6,4 +6,6 @@ spring:
       ddl-auto: update
 
 app:
-  noteevents: file:pathToNoteEvents.csv
+  noteEvents: file:pathToNoteEvents.csv
+  noteEventsLimit: 100000
+

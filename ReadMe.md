@@ -40,5 +40,5 @@ Provide path to noteevents file into application.yml
 
 ```yaml
 app:
-  noteevents: file:pathToNoteEvents.csv
+  noteEvents: file:pathToNoteEvents.csv
 ```

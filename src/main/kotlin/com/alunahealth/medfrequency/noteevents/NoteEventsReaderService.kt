@@ -11,10 +11,11 @@ import kotlin.streams.toList
 
 @Service
 class NoteEventsReaderService(
-    @Value("\${app.noteevents}") private val noteEvents: Resource,
+    @Value("\${app.noteEvents}") private val noteEvents: Resource,
+    @Value("\${app.noteEventsLimit}") private val limit: Long,
     private val noteEventsProcessedRepository: NoteEventsProcessedRepository
 ) {
-    fun getNoteEvents(limit: Long = 10): List<String> {
+    fun getNoteEvents(): List<String> {
 
         val skip = noteEventsProcessedRepository.find().count
 

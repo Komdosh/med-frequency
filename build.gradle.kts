@@ -31,6 +31,7 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     runtimeOnly("com.h2database:h2")
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
