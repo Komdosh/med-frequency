@@ -7,15 +7,13 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.Resource
 import org.springframework.stereotype.Service
 import java.util.stream.Stream
-import kotlin.streams.toList
 
 @Service
 class NoteEventsReaderService(
     @Value("\${app.noteEvents}") private val noteEvents: Resource,
-    @Value("\${app.noteEventsLimit}") private val limit: Long,
     private val noteEventsProcessedRepository: NoteEventsProcessedRepository
 ) {
-    fun getNoteEvents(): List<String> {
+    fun getNoteEvents(): Stream<String> {
 
         val skip = noteEventsProcessedRepository.find().count
 
@@ -29,8 +27,6 @@ class NoteEventsReaderService(
             .takeWhile { iterator.hasNext() }
             .map { iterator.next() }
             .skip(skip)
-            .limit(limit)
             .map { it.get(10) }
-            .toList()
     }
 }

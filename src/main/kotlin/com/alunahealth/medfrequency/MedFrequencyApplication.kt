@@ -25,28 +25,22 @@ class MedFrequencyApplication(
 
     @Bean
     @Profile("example")
-    fun example() = ApplicationRunner{
+    fun example() = ApplicationRunner {
         runExample()
     }
+
 
     @Bean
     @Profile("!example")
     fun run(): ApplicationRunner {
 
-        return ApplicationRunner{
+        return ApplicationRunner {
             if (noteEventsProcessedRepository.count() == 0L) {
                 noteEventsProcessedRepository.save(NoteEventsProcessed(count = 0))
             }
-
             noteEventsReaderService.getNoteEvents()
-                .parallelStream()
-                .map { metaMapFrequencyService.buildFrequencies(it) }
-                .forEach {
-                    val p = noteEventsProcessedRepository.find()
-                    log.info("finished ${p.count} / $NOTE_EVENTS_SIZE_2020 (${p.count / NOTE_EVENTS_SIZE_2020}%)")
-                    p.count++
-                    noteEventsProcessedRepository.save(p)
-                }
+                .forEach { metaMapFrequencyService.buildFrequencies(it) }
+
         }
     }
 }

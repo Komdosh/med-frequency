@@ -7,5 +7,4 @@ spring:
 
 app:
   noteEvents: file:pathToNoteEvents.csv
-  noteEventsLimit: 100000
 
