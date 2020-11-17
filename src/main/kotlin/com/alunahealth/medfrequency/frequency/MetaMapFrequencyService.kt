@@ -8,6 +8,9 @@ import gov.nih.nlm.nls.metamap.Ev
 import gov.nih.nlm.nls.metamap.MetaMapApi
 import gov.nih.nlm.nls.metamap.MetaMapApiImpl
 import gov.nih.nlm.nls.metamap.Result
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
 import org.springframework.core.task.TaskExecutor
 import org.springframework.stereotype.Service
 import java.text.Normalizer
@@ -22,6 +25,7 @@ class MetaMapFrequencyService(
 ) {
 
     private final val api: MetaMapApi = MetaMapApiImpl()
+    private final val api2: MetaMapApi = MetaMapApiImpl()
     private val startTime = System.nanoTime()
     private var avgProcessingTime = 0L
     private var processed = 0L
@@ -29,21 +33,38 @@ class MetaMapFrequencyService(
     init {
         api.options =
             "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
+        api2.session.port = 8076
+        api2.options =
+            "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
     }
 
+    var tCount = 0
+
+    val semaphore = Semaphore(2)
     fun buildFrequencies(input: String) {
         val text =
             Normalizer.normalize(input, Normalizer.Form.NFD).replace("[^\\p{ASCII}]".toRegex(), "")
 
-        val processedCitations = api.processCitationsFromString(text)
+        GlobalScope.launch {
+            semaphore.acquire()
+            val processedCitations = if (tCount == 0) {
+                tCount++
+                log.info("Start text processing ${text.length} on first node")
+                api.processCitationsFromString(text)
+            } else {
+                tCount = 0
+                log.info("Start text processing ${text.length} on second node")
+                api2.processCitationsFromString(text)
+            }
+            semaphore.release()
+            taskExecutor.execute {
+                val concepts = getConcepts(processedCitations)
 
-        taskExecutor.execute {
-            val concepts = getConcepts(processedCitations)
+                log.info("Text size: ${text.length}, concepts: ${concepts.values.size}")
+                saveFrequencies(concepts)
 
-            log.info("Text size: ${text.length}, concepts: ${concepts.values.size}")
-            saveFrequencies(concepts)
-
-            logTime()
+                logTime()
+            }
         }
     }
 
