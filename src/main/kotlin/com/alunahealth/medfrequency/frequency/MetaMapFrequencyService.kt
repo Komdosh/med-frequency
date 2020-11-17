@@ -15,6 +15,7 @@ import org.springframework.core.task.TaskExecutor
 import org.springframework.stereotype.Service
 import java.text.Normalizer
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors.groupingBy
 
 @Service
@@ -38,7 +39,7 @@ class MetaMapFrequencyService(
     private var avgProcessingTime = 0L
     private var processed = 0L
 
-    var tCount = 0
+    var tCount = AtomicInteger(0)
 
     val semaphore = Semaphore(ports.size)
 
@@ -50,7 +51,6 @@ class MetaMapFrequencyService(
             semaphore.acquire()
             CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
                 val processedCitations = processText(text)
-
                 semaphore.release()
                 taskExecutor.execute {
                     val concepts = getConcepts(processedCitations)
@@ -66,14 +66,16 @@ class MetaMapFrequencyService(
     }
 
     private fun processText(text: String): MutableList<Result> {
-        val node = if (tCount >= ports.size) 0 else tCount
+        val node = tCount.getAndIncrement() % ports.size
         val api = apis[node]
-        tCount++
-        if (tCount >= ports.size) {
-            tCount = 0
-        }
+        api.session.connect()
+
         log.info("Start text processing ${text.length} on $node node")
-        return api.processCitationsFromString(text)
+        try {
+            return api.processCitationsFromString(text)
+        } finally {
+            api.disconnect()
+        }
     }
 
     private fun saveFrequencies(concepts: Map<String, List<Ev>>) {
