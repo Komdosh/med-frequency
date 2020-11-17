@@ -7,4 +7,6 @@ spring:
 
 app:
   noteEvents: file:pathToNoteEvents.csv
+  metamap:
+    ports: 8066
 
