@@ -13,6 +13,11 @@ class NoteEventsReaderService(
     @Value("\${app.noteEvents}") private val noteEvents: Resource,
     private val noteEventsProcessedRepository: NoteEventsProcessedRepository
 ) {
+
+    companion object {
+        const val COMBINED_TEXTS = 5
+    }
+
     fun getNoteEvents(): Stream<String> {
 
         val skip = noteEventsProcessedRepository.find().count
@@ -23,10 +28,16 @@ class NoteEventsReaderService(
         )
         val iterator = csvParser.iterator()
 
+        val texts = mutableSetOf<String>()
         return Stream.generate<CSVRecord> { null }
             .takeWhile { iterator.hasNext() }
             .map { iterator.next() }
-            .skip(skip)
+            .skip(skip * COMBINED_TEXTS)
             .map { it.get(10) }
+            .map { texts.add(it) }
+            .filter { texts.size >= COMBINED_TEXTS }
+            .map {
+                texts.reduce { acc, s -> acc + s }
+            }
     }
 }

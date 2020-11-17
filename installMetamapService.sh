@@ -7,7 +7,7 @@ After=syslog.target
 [Service]
 User=root
 Type=simple
-ExecStart=$METAMAP_PATH/start.sh
+ExecStart=/home/ubuntu/public_mm/start.sh
 SuccessExitStatus=203
 
 [Install]

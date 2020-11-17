@@ -8,8 +8,7 @@ import gov.nih.nlm.nls.metamap.Ev
 import gov.nih.nlm.nls.metamap.MetaMapApi
 import gov.nih.nlm.nls.metamap.MetaMapApiImpl
 import gov.nih.nlm.nls.metamap.Result
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
 import org.springframework.core.task.TaskExecutor
 import org.springframework.stereotype.Service
@@ -33,7 +32,10 @@ class MetaMapFrequencyService(
     init {
         api.options =
             "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
+
         api2.session.port = 8076
+        /*api2.session.host = "192.168.25.4"*/
+
         api2.options =
             "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
     }
@@ -41,30 +43,35 @@ class MetaMapFrequencyService(
     var tCount = 0
 
     val semaphore = Semaphore(2)
+
     fun buildFrequencies(input: String) {
         val text =
             Normalizer.normalize(input, Normalizer.Form.NFD).replace("[^\\p{ASCII}]".toRegex(), "")
 
-        GlobalScope.launch {
+        runBlocking {
             semaphore.acquire()
-            val processedCitations = if (tCount == 0) {
-                tCount++
-                log.info("Start text processing ${text.length} on first node")
-                api.processCitationsFromString(text)
-            } else {
-                tCount = 0
-                log.info("Start text processing ${text.length} on second node")
-                api2.processCitationsFromString(text)
-            }
-            semaphore.release()
-            taskExecutor.execute {
-                val concepts = getConcepts(processedCitations)
+            CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
 
-                log.info("Text size: ${text.length}, concepts: ${concepts.values.size}")
-                saveFrequencies(concepts)
+                val processedCitations = if (tCount == 0) {
+                    tCount++
+                    log.info("Start text processing ${text.length} on first node")
+                    api.processCitationsFromString(text)
+                } else {
+                    tCount = 0
+                    log.info("Start text processing ${text.length} on second node")
+                    api2.processCitationsFromString(text)
+                }
+                semaphore.release()
+                taskExecutor.execute {
+                    val concepts = getConcepts(processedCitations)
 
-                logTime()
+                    log.info("Text size: ${text.length}, concepts: ${concepts.values.size}")
+                    saveFrequencies(concepts)
+
+                    logTime()
+                }
             }
+
         }
     }
 

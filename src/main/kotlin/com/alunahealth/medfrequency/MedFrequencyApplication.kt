@@ -4,6 +4,7 @@ import com.alunahealth.medfrequency.frequency.MetaMapFrequencyService
 import com.alunahealth.medfrequency.noteevents.NoteEventsProcessed
 import com.alunahealth.medfrequency.noteevents.NoteEventsProcessedRepository
 import com.alunahealth.medfrequency.noteevents.NoteEventsReaderService
+import com.alunahealth.medfrequency.noteevents.NoteEventsReaderService.Companion.COMBINED_TEXTS
 import mu.KotlinLogging
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -12,7 +13,7 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
 
-const val NOTE_EVENTS_SIZE_2020 = 2_083_180
+const val NOTE_EVENTS_SIZE_2020 = 2_083_180 / COMBINED_TEXTS
 val log = KotlinLogging.logger {}
 
 @SpringBootApplication
