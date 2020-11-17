@@ -39,7 +39,7 @@ class MedFrequencyApplication(
             }
 
             noteEventsReaderService.getNoteEvents()
-                .stream()
+                .parallelStream()
                 .map { metaMapFrequencyService.buildFrequencies(it) }
                 .forEach {
                     val p = noteEventsProcessedRepository.find()

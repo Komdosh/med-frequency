@@ -12,15 +12,27 @@ copy all files from `javaapi/public_mm/bin` to `public_mm_linux_main_2020/public
 
 copy `javaapi/public_mm/bin/mmserver` to `public_mm_linux_main_2020/public_mm`
 
+To install server, run inside `public_mm`
+
+`bin/instal.sh`
+
 ## MetaMap Server Run
 
 copy files from this repo `./scripts` folder to `public_mm_linux_main_2020/public_mm`
 
 `chmod +x start.sh stop.sh`
 
-to run all servers execute `sh ./start.sh` (mmserver std output will start in terminal)
+export path to metamap
 
-to stop all servers execute `sh ./stop.sh`
+`export METAMAP_PATH=/home/administrator/metamap/public_mm`
+
+to run all servers execute `./start.sh` (mmserver std output will start in terminal)
+
+to stop all servers execute `./stop.sh`
+
+for install service run
+
+`./installMetamapService.sh`
 
 ## Example Execution
 
