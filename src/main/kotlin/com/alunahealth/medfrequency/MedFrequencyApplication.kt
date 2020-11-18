@@ -13,7 +13,9 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
 
-const val NOTE_EVENTS_SIZE_2020 = 2_083_180 / COMBINED_TEXTS
+const val TEXTS_LESS_THAN_500_CHARS = 110_166
+const val ALL_TEXTS = 491_103
+const val NOTE_EVENTS_SIZE_2020 = ALL_TEXTS - TEXTS_LESS_THAN_500_CHARS / COMBINED_TEXTS
 val log = KotlinLogging.logger {}
 
 @SpringBootApplication

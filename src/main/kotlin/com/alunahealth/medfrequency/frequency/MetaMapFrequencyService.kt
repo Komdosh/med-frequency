@@ -5,7 +5,6 @@ import com.alunahealth.medfrequency.log
 import com.alunahealth.medfrequency.noteevents.NoteEventsProcessed
 import com.alunahealth.medfrequency.noteevents.NoteEventsProcessedRepository
 import gov.nih.nlm.nls.metamap.Ev
-import gov.nih.nlm.nls.metamap.MetaMapApi
 import gov.nih.nlm.nls.metamap.MetaMapApiImpl
 import gov.nih.nlm.nls.metamap.Result
 import kotlinx.coroutines.*
@@ -25,15 +24,6 @@ class MetaMapFrequencyService(
     private val taskExecutor: TaskExecutor,
     @Value("\${app.metamap.ports}") private val ports: List<Int> = listOf(8086)
 ) {
-
-    private final val apis: List<MetaMapApi> = Array(ports.size) {
-        val api = MetaMapApiImpl()
-        api.setPort(ports[it])
-
-        api.options =
-            "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
-        api
-    }.toList()
 
     private val startTime = System.nanoTime()
     private var avgProcessingTime = 0L
@@ -67,8 +57,11 @@ class MetaMapFrequencyService(
 
     private fun processText(text: String): MutableList<Result> {
         val node = tCount.getAndIncrement() % ports.size
-        val api = apis[node]
-        api.session.connect()
+        val api = MetaMapApiImpl()
+        api.setPort(ports[node])
+
+        api.options =
+            "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
 
         log.info("Start text processing ${text.length} on $node node")
         try {
