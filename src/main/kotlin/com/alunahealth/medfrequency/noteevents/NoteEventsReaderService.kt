@@ -44,13 +44,12 @@ class NoteEventsReaderService(
                 .filter { subjects.contains(it.get(1)) }
         }
 
-        val texts = mutableSetOf<String>()
-
         var textStream = csvStream
             .map { it.get(10) }
             .filter { it.length > 500 }
 
         if (COMBINED_TEXTS > 1) {
+            val texts = mutableSetOf<String>()
             textStream = textStream
                 .map { texts.add(it) }
                 .filter { texts.size >= COMBINED_TEXTS }

@@ -4,6 +4,14 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+  task:
+    execution:
+      pool:
+        core-size: 8
+        max-size: 8
+      shutdown:
+        await-termination: true
+      thread-name-prefix: aluna-task-
 
 app:
   noteEvents: file:/home/ubuntu/noteevents.csv

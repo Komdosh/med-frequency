@@ -8,6 +8,8 @@ import gov.nih.nlm.nls.metamap.Ev
 import gov.nih.nlm.nls.metamap.MetaMapApiImpl
 import gov.nih.nlm.nls.metamap.Result
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.sync.Semaphore
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.task.TaskExecutor
@@ -16,6 +18,7 @@ import java.text.Normalizer
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors.groupingBy
+import javax.annotation.PostConstruct
 
 @Service
 class MetaMapFrequencyService(
@@ -33,27 +36,37 @@ class MetaMapFrequencyService(
 
     val semaphore = Semaphore(ports.size)
 
+    val channel = Channel<Pair<MutableList<Result>, Int>>()
+
     fun buildFrequencies(input: String) {
         val text =
             Normalizer.normalize(input, Normalizer.Form.NFD).replace("[^\\p{ASCII}]".toRegex(), "")
 
-        runBlocking {
+        CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
             semaphore.acquire()
-            CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
-                val processedCitations = processText(text)
-                semaphore.release()
+            val processedCitations = processText(text)
+            semaphore.release()
+            channel.send(Pair(processedCitations, text.length))
+        }
+    }
+
+
+    @PostConstruct
+    fun initChannel() {
+        CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
+            channel.consumeEach { (processedCitations, textLength) ->
                 taskExecutor.execute {
                     val concepts = getConcepts(processedCitations)
 
-                    log.info("Text size: ${text.length}, concepts: ${concepts.values.size}")
+                    log.info("Text size: ${textLength}, concepts: ${concepts.values.size}")
                     saveFrequencies(concepts)
 
                     logTime()
                 }
             }
-
         }
     }
+
 
     private fun processText(text: String): MutableList<Result> {
         val node = tCount.getAndIncrement() % ports.size
@@ -132,7 +145,7 @@ class MetaMapFrequencyService(
 
 fun getConcepts(processedCitations: List<Result>): Map<String, List<Ev>> {
     return processedCitations
-        .parallelStream()
+        .stream()
         .flatMap { it.utteranceList.stream() }
         .flatMap { it.pcmList.stream() }
         .flatMap { it.mappingList.stream() }
