@@ -10,7 +10,8 @@ plugins {
 
 group = "com.alunahealth"
 version = "0.0.1"
-java.sourceCompatibility = JavaVersion.VERSION_11
+java.sourceCompatibility = JavaVersion.VERSION_15
+java.targetCompatibility = JavaVersion.VERSION_15
 
 configurations {
     compileOnly {
@@ -51,6 +52,6 @@ tasks.withType<Test> {
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = JavaVersion.VERSION_11.ordinal.toString()
+        jvmTarget = JavaVersion.VERSION_15.ordinal.toString()
     }
 }

@@ -18,4 +18,8 @@ app:
   subjectIds: file:/home/ubuntu/subject_id
   metamap:
     ports: 8066,8067,8068,8069,8070,8071
-
+    script:
+      scheduled: true
+      directory: /home/ubuntu
+      start: /home/ubuntu/runAllMetamap.sh
+      stop: /home/ubuntu/stopAllMetamap.sh

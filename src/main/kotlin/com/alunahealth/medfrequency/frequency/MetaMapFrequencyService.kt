@@ -8,8 +8,6 @@ import gov.nih.nlm.nls.metamap.Ev
 import gov.nih.nlm.nls.metamap.MetaMapApiImpl
 import gov.nih.nlm.nls.metamap.Result
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.sync.Semaphore
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.task.TaskExecutor
@@ -18,14 +16,13 @@ import java.text.Normalizer
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors.groupingBy
-import javax.annotation.PostConstruct
 
 @Service
 class MetaMapFrequencyService(
     private val frequencyRepository: FrequencyRepository,
     private val noteEventsProcessedRepository: NoteEventsProcessedRepository,
     private val taskExecutor: TaskExecutor,
-    @Value("\${app.metamap.ports}") private val ports: List<Int> = listOf(8086)
+    @Value("\${app.metamap.ports}") val ports: List<Int> = listOf(8086)
 ) {
 
     private val startTime = System.nanoTime()
@@ -36,49 +33,51 @@ class MetaMapFrequencyService(
 
     val semaphore = Semaphore(ports.size)
 
-    val channel = Channel<Pair<MutableList<Result>, Int>>()
-
     fun buildFrequencies(input: String) {
-        val text =
-            Normalizer.normalize(input, Normalizer.Form.NFD).replace("[^\\p{ASCII}]".toRegex(), "")
-
-        CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
+        runBlocking {
             semaphore.acquire()
-            val processedCitations = processText(text)
-            semaphore.release()
-            channel.send(Pair(processedCitations, text.length))
-        }
-    }
 
+            val text =
+                Normalizer.normalize(input, Normalizer.Form.NFD)
+                    .replace("[^\\p{ASCII}]".toRegex(), "")
 
-    @PostConstruct
-    fun initChannel() {
-        CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
-            channel.consumeEach { (processedCitations, textLength) ->
-                taskExecutor.execute {
-                    val concepts = getConcepts(processedCitations)
-
-                    log.info("Text size: ${textLength}, concepts: ${concepts.values.size}")
-                    saveFrequencies(concepts)
-
-                    logTime()
-                }
+            CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
+                val processedCitations = processText(text)
+                semaphore.release()
+                processCitations(processedCitations, text.length)
             }
         }
     }
 
+    private fun processCitations(
+        processedCitations: MutableList<Result>,
+        textLength: Int
+    ) {
+        if (processedCitations.isEmpty())
+            return
+        taskExecutor.execute {
+            val concepts = getConcepts(processedCitations)
+
+            log.info("Text size: ${textLength}, concepts: ${concepts.values.size}")
+            saveFrequencies(concepts)
+
+            logTime()
+        }
+    }
 
     private fun processText(text: String): MutableList<Result> {
         val node = tCount.getAndIncrement() % ports.size
         val api = MetaMapApiImpl()
         api.setPort(ports[node])
-
         api.options =
             "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
 
         log.info("Start text processing ${text.length} on $node node")
-        try {
-            return api.processCitationsFromString(text)
+        return try {
+            api.processCitationsFromString(text)
+        } catch (e: Exception) {
+            log.info(e.message)
+            mutableListOf()
         } finally {
             api.disconnect()
         }
@@ -110,7 +109,7 @@ class MetaMapFrequencyService(
         val (hours, minutes, seconds) = estimatedTime()
 
         val avgSec = TimeUnit.SECONDS.convert(avg, TimeUnit.NANOSECONDS)
-        log.info("finished ${p.count} / $NOTE_EVENTS_SIZE_2020 (${p.count / NOTE_EVENTS_SIZE_2020}%) Estimated Time: $hours:$minutes:$seconds, sec/doc: $avgSec")
+        log.info("finished ${p.count} / $NOTE_EVENTS_SIZE_2020 (${((p.count.toDouble() / NOTE_EVENTS_SIZE_2020) * 100).toInt()}%) Estimated Time: $hours:$minutes:$seconds, sec/doc: $avgSec")
     }
 
     private fun increaseProcessed(): NoteEventsProcessed {
@@ -145,7 +144,8 @@ class MetaMapFrequencyService(
 
 fun getConcepts(processedCitations: List<Result>): Map<String, List<Ev>> {
     return processedCitations
-        .stream()
+        .parallelStream()
+        .unordered()
         .flatMap { it.utteranceList.stream() }
         .flatMap { it.pcmList.stream() }
         .flatMap { it.mappingList.stream() }
