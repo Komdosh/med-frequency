@@ -19,7 +19,7 @@ app:
   metamap:
     ports: 8066,8067,8068,8069,8070,8071
     script:
-      scheduled: true
+      enabled: true
       directory: /home/ubuntu
       start: /home/ubuntu/runAllMetamap.sh
       stop: /home/ubuntu/stopAllMetamap.sh

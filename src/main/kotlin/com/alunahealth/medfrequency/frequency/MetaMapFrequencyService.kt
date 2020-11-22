@@ -4,7 +4,6 @@ import com.alunahealth.medfrequency.NOTE_EVENTS_SIZE_2020
 import com.alunahealth.medfrequency.log
 import com.alunahealth.medfrequency.noteevents.NoteEventsProcessed
 import com.alunahealth.medfrequency.noteevents.NoteEventsProcessedRepository
-import gov.nih.nlm.nls.metamap.Ev
 import gov.nih.nlm.nls.metamap.MetaMapApiImpl
 import gov.nih.nlm.nls.metamap.Result
 import kotlinx.coroutines.*
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Service
 import java.text.Normalizer
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.stream.Collectors
 import java.util.stream.Collectors.groupingBy
 
 @Service
@@ -55,26 +55,31 @@ class MetaMapFrequencyService(
     ) {
         if (processedCitations.isEmpty())
             return
-        taskExecutor.execute {
-            val concepts = getConcepts(processedCitations)
+        val concepts = getConcepts(processedCitations)
 
-            log.info("Text size: ${textLength}, concepts: ${concepts.values.size}")
-            saveFrequencies(concepts)
+        log.info("Text size: ${textLength}, concepts: ${concepts.values.size}")
+        saveFrequencies(concepts)
 
-            logTime()
-        }
+        logTime()
     }
 
     private fun processText(text: String): MutableList<Result> {
+        val startTime = System.nanoTime()
         val node = tCount.getAndIncrement() % ports.size
         val api = MetaMapApiImpl()
         api.setPort(ports[node])
         api.options =
-            "-i --exclude_sts qnco,tmco,qlco --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD"
+            "-i --exclude_sts qnco,tmco,qlco,mnob,popg,idcn,spco,grup,cnce,phpr --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD,NCI_BRIDG_3_0_3,NCI_CPTAC,NCI_CTCAE,NCI_CTCAE_5"
 
         log.info("Start text processing ${text.length} on $node node")
         return try {
-            api.processCitationsFromString(text)
+            val processed = api.processCitationsFromString(text)
+            log.info(
+                "MetaMap processing {} took {} millis",
+                text.length,
+                TimeUnit.MILLISECONDS.convert(System.nanoTime() - startTime, TimeUnit.NANOSECONDS)
+            )
+            processed
         } catch (e: Exception) {
             log.info(e.message)
             mutableListOf()
@@ -83,17 +88,16 @@ class MetaMapFrequencyService(
         }
     }
 
-    private fun saveFrequencies(concepts: Map<String, List<Ev>>) {
-        val frequencies = concepts.values.map { list ->
-            val mapEv = list[0]
+    private fun saveFrequencies(concepts: Map<Concept, Long>) {
+        val frequencies = concepts.entries.map { entry ->
 
-            val freq = frequencyRepository.findByCui(mapEv.conceptId)
+            val freq = frequencyRepository.findByCui(entry.key.conceptId)
                 ?: MedTermFrequencies(
                     null,
-                    mapEv.conceptId,
-                    mapEv.preferredName
+                    entry.key.conceptId,
+                    entry.key.preferredName
                 )
-            freq.count += list.size
+            freq.count += entry.value
             return@map freq
         }
         frequencyRepository.saveAll(frequencies)
@@ -108,8 +112,8 @@ class MetaMapFrequencyService(
 
         val (hours, minutes, seconds) = estimatedTime()
 
-        val avgSec = TimeUnit.SECONDS.convert(avg, TimeUnit.NANOSECONDS)
-        log.info("finished ${p.count} / $NOTE_EVENTS_SIZE_2020 (${((p.count.toDouble() / NOTE_EVENTS_SIZE_2020) * 100).toInt()}%) Estimated Time: $hours:$minutes:$seconds, sec/doc: $avgSec")
+        val avgMillis = TimeUnit.MILLISECONDS.convert(avg, TimeUnit.NANOSECONDS)
+        log.info("Finished ${p.count} / $NOTE_EVENTS_SIZE_2020 (${((p.count.toDouble() / NOTE_EVENTS_SIZE_2020) * 100).toInt()}%) Estimated Time: $hours:$minutes:$seconds, millis/doc: $avgMillis")
     }
 
     private fun increaseProcessed(): NoteEventsProcessed {
@@ -142,16 +146,51 @@ class MetaMapFrequencyService(
     }
 }
 
-fun getConcepts(processedCitations: List<Result>): Map<String, List<Ev>> {
-    return processedCitations
-        .parallelStream()
+data class Concept(val conceptId: String, val preferredName: String, val semanticType: String) {
+    override fun hashCode(): Int {
+        return conceptId.hashCode()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Concept
+
+        if (conceptId != other.conceptId) return false
+
+        return true
+    }
+
+}
+
+fun getConcepts(processedCitations: List<Result>): Map<Concept, Long> {
+    val startTime = System.nanoTime()
+    val conceptMap = processedCitations
+        .stream()
         .unordered()
         .flatMap { it.utteranceList.stream() }
         .flatMap { it.pcmList.stream() }
         .flatMap { it.mappingList.stream() }
         .flatMap { it.evList.stream() }
-        .filter {
-            it.preferredName.length > 1
+        .map {
+            Concept(
+                conceptId = it.conceptId,
+                preferredName = it.preferredName,
+                it.semanticTypes.toString()
+            )
         }
-        .collect(groupingBy { it.conceptId })
+        .collect(
+            groupingBy(
+                { it },
+                Collectors.counting()
+            )
+        )
+
+    log.info(
+        "{} concepts were fetched for {} millis",
+        conceptMap.size,
+        TimeUnit.MILLISECONDS.convert(System.nanoTime() - startTime, TimeUnit.NANOSECONDS)
+    )
+    return conceptMap
 }

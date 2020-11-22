@@ -33,7 +33,6 @@ class NoteEventsReaderService(
         )
         val iterator = csvParser.iterator()
 
-
         var csvStream = Stream.generate<CSVRecord> { null }
             .takeWhile { iterator.hasNext() }
             .map { iterator.next() }

@@ -19,7 +19,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
 
 const val TEXTS_LESS_THAN_500_CHARS = 110_166
 const val ALL_TEXTS = 491_103
-const val NOTE_EVENTS_SIZE_2020 = ALL_TEXTS - TEXTS_LESS_THAN_500_CHARS / COMBINED_TEXTS
+const val NOTE_EVENTS_SIZE_2020 = (ALL_TEXTS - TEXTS_LESS_THAN_500_CHARS) / COMBINED_TEXTS
 val log = KotlinLogging.logger {}
 
 

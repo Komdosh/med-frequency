@@ -15,6 +15,12 @@ import org.springframework.stereotype.Service
 val resetMutex: Mutex = Mutex()
 
 @Service
+@ConditionalOnProperty(
+    "enabled",
+    prefix = "app.metamap.script",
+    havingValue = "true",
+    matchIfMissing = false
+)
 class MetaMapScheduled(
     @Value("\${app.metamap.script.start}")
     private val startScript: String,
@@ -23,15 +29,13 @@ class MetaMapScheduled(
     private val taskExecutor: TaskExecutor,
     private val metaMapFrequencyService: MetaMapFrequencyService,
 ) {
+    companion object {
+        const val SECONDS_IN_MILLIS = 1000L
+        const val MINUTES_IN_SECONDS = 60L
+        const val HOURS_IN_MINUTES = 60L
+    }
 
-
-    @Scheduled(fixedDelay = 4 * 60 * 60 * 1000) //run every 4 hours
-    @ConditionalOnProperty(
-        "scheduled",
-        prefix = "app.metamap.script",
-        havingValue = "true",
-        matchIfMissing = false
-    )
+    @Scheduled(fixedDelay = 3 * HOURS_IN_MINUTES * MINUTES_IN_SECONDS * SECONDS_IN_MILLIS) //run every 3 hours
     fun scheduled() {
         CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
 
@@ -64,6 +68,9 @@ class MetaMapScheduled(
 
             log.info("Run gc")
             Runtime.getRuntime().gc()
+
+            delay(3000)
+
             resetMutex.unlock()
         }
     }
