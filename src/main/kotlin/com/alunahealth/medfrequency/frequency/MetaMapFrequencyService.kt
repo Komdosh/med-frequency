@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 import java.util.stream.Collectors.groupingBy
 
+
 @Service
 class MetaMapFrequencyService(
     private val frequencyRepository: FrequencyRepository,
@@ -24,21 +25,22 @@ class MetaMapFrequencyService(
     private val taskExecutor: TaskExecutor,
     @Value("\${app.metamap.ports}") val ports: List<Int> = listOf(8086)
 ) {
-
+    val permits = ports.size
     private val startTime = System.nanoTime()
     private var avgProcessingTime = 0L
     private var processed = 0L
 
-    var tCount = AtomicInteger(0)
+    var nodeCounter = AtomicInteger(0)
 
-    val semaphore = Semaphore(ports.size)
+    val semaphore = Semaphore(permits)
 
     fun buildFrequencies(input: String) {
         runBlocking {
             semaphore.acquire()
 
+            val withRemovedIdentifiers = input.replace("\\[(.*?)\\]".toRegex(), "")
             val text =
-                Normalizer.normalize(input, Normalizer.Form.NFD)
+                Normalizer.normalize(withRemovedIdentifiers, Normalizer.Form.NFD)
                     .replace("[^\\p{ASCII}]".toRegex(), "")
 
             CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
@@ -65,11 +67,11 @@ class MetaMapFrequencyService(
 
     private fun processText(text: String): MutableList<Result> {
         val startTime = System.nanoTime()
-        val node = tCount.getAndIncrement() % ports.size
+        val node = nodeCounter.getAndIncrement() % ports.size
         val api = MetaMapApiImpl()
         api.setPort(ports[node])
         api.options =
-            "-i --exclude_sts qnco,tmco,qlco,mnob,popg,idcn,spco,grup,cnce,phpr --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD,NCI_BRIDG_3_0_3,NCI_CPTAC,NCI_CTCAE,NCI_CTCAE_5"
+            "-i --exclude_sts qnco,tmco,qlco,mnob,popg,idcn,spco,grup,cnce,phpr,anim,lang,prog,orgt,geoa,clas,rept,rnlw,popg,plnt --exclude_sources NCI_FDA,NLMSubSyn,CST,NCI_CDISC,NCI_NCI-GLOSS,NCI_NICHD,NCI_BRIDG_3_0_3,NCI_CPTAC,NCI_CTCAE,NCI_CTCAE_5"
 
         log.info("Start text processing ${text.length} on $node node")
         return try {
@@ -101,6 +103,7 @@ class MetaMapFrequencyService(
             return@map freq
         }
         frequencyRepository.saveAll(frequencies)
+        Runtime.getRuntime().gc()
     }
 
     private fun logTime() {
@@ -146,7 +149,7 @@ class MetaMapFrequencyService(
     }
 }
 
-data class Concept(val conceptId: String, val preferredName: String, val semanticType: String) {
+data class Concept(val conceptId: String, val preferredName: String) {
     override fun hashCode(): Int {
         return conceptId.hashCode()
     }
@@ -171,18 +174,18 @@ fun getConcepts(processedCitations: List<Result>): Map<Concept, Long> {
         .unordered()
         .flatMap { it.utteranceList.stream() }
         .flatMap { it.pcmList.stream() }
+        .filter { it.mappingList.isNotEmpty() }
         .flatMap { it.mappingList.stream() }
+        .filter { it.evList.isNotEmpty() }
         .flatMap { it.evList.stream() }
-        .map {
-            Concept(
-                conceptId = it.conceptId,
-                preferredName = it.preferredName,
-                it.semanticTypes.toString()
-            )
-        }
         .collect(
             groupingBy(
-                { it },
+                {
+                    Concept(
+                        conceptId = it.conceptId,
+                        preferredName = it.preferredName
+                    )
+                },
                 Collectors.counting()
             )
         )

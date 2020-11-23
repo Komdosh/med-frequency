@@ -35,7 +35,7 @@ class MetaMapScheduled(
         const val HOURS_IN_MINUTES = 60L
     }
 
-    @Scheduled(fixedDelay = 3 * HOURS_IN_MINUTES * MINUTES_IN_SECONDS * SECONDS_IN_MILLIS) //run every 3 hours
+    @Scheduled(fixedDelay = 2 * HOURS_IN_MINUTES * MINUTES_IN_SECONDS * SECONDS_IN_MILLIS) //run every 2 hours
     fun scheduled() {
         CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
 
@@ -45,11 +45,11 @@ class MetaMapScheduled(
             log.info("Run metamap restart")
 
             resetMutex.lock()
-            while (metaMapFrequencyService.semaphore.availablePermits != metaMapFrequencyService.ports.size) {
+            while (metaMapFrequencyService.semaphore.availablePermits != metaMapFrequencyService.permits) {
                 log.info(
                     "semaphore {}/{}",
                     metaMapFrequencyService.semaphore.availablePermits,
-                    metaMapFrequencyService.ports.size
+                    metaMapFrequencyService.permits
                 )
                 delay(5000)
             }

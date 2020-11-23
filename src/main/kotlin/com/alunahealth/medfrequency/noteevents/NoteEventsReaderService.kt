@@ -45,7 +45,6 @@ class NoteEventsReaderService(
 
         var textStream = csvStream
             .map { it.get(10) }
-            .filter { it.length > 500 }
 
         if (COMBINED_TEXTS > 1) {
             val texts = mutableSetOf<String>()
