@@ -15,6 +15,7 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
 import org.springframework.scheduling.annotation.EnableScheduling
+import java.util.concurrent.TimeUnit
 
 const val ALL_TEXTS = 313_870
 const val NOTE_EVENTS_SIZE_2020 = ALL_TEXTS / COMBINED_TEXTS
@@ -51,7 +52,7 @@ class MedFrequencyApplication(
                     runBlocking {
                         while (resetMutex.isLocked) {
                             log.info("ResetMutex is locked")
-                            delay(5000)
+                            delay(TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES))
                         }
                         metaMapFrequencyService.buildFrequencies(it)
                     }

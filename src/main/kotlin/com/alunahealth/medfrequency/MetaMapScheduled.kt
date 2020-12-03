@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.core.task.TaskExecutor
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import java.util.concurrent.TimeUnit
 
 val resetMutex: Mutex = Mutex()
 
@@ -35,7 +36,7 @@ class MetaMapScheduled(
         const val HOURS_IN_MINUTES = 60L
     }
 
-    @Scheduled(fixedDelay = 2 * HOURS_IN_MINUTES * MINUTES_IN_SECONDS * SECONDS_IN_MILLIS) //run every 2 hours
+    @Scheduled(fixedDelay = 1 * HOURS_IN_MINUTES * MINUTES_IN_SECONDS * SECONDS_IN_MILLIS) //run every half hour
     fun scheduled() {
         CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
 
@@ -51,7 +52,7 @@ class MetaMapScheduled(
                     metaMapFrequencyService.semaphore.availablePermits,
                     metaMapFrequencyService.permits
                 )
-                delay(5000)
+                delay(TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES))
             }
 
             log.info("Run metamap stop script")
