@@ -36,7 +36,7 @@ class MetaMapScheduled(
         const val HOURS_IN_MINUTES = 60L
     }
 
-    @Scheduled(fixedDelay = 1 * HOURS_IN_MINUTES * MINUTES_IN_SECONDS * SECONDS_IN_MILLIS) //run every half hour
+    @Scheduled(fixedDelay = 2 * HOURS_IN_MINUTES * MINUTES_IN_SECONDS * SECONDS_IN_MILLIS) //run every half hour
     fun scheduled() {
         CoroutineScope(taskExecutor.asCoroutineDispatcher()).launch {
 
