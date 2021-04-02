@@ -26,7 +26,7 @@ fun runExample(){
     input = input.replace("[^\\p{ASCII}]".toRegex(), "")
     val api: MetaMapApi = MetaMapApiImpl()
 
-    println("api instanciated")
+    println("api instantiated")
 
     val resultList = api.processCitationsFromString(input)
     resultList.forEach { result: Result ->

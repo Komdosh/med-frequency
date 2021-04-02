@@ -6,7 +6,7 @@ After=syslog.target
 
 [Service]
 User=root
-ExecStart=/usr/bin/java -Xms512m -Xmx2048m -jar -Dapp.noteEvents=file:/home/ubuntu/NOTEEVENTS.csv /opt/med-frequency-0.0.1.jar
+ExecStart=/usr/bin/java -Xms512m -Xmx2048m -jar /opt/med-frequency-0.0.1.jar
 SuccessExitStatus=143
 
 [Install]

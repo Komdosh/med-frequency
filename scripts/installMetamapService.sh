@@ -7,7 +7,7 @@ After=syslog.target
 [Service]
 User=root
 Type=simple
-ExecStart=/home/ubuntu/public_mm/start.sh
+ExecStart=$MED_FREQUENCY_WORKDIR/public_mm/start.sh
 SuccessExitStatus=203
 
 [Install]
